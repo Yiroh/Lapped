@@ -18,6 +18,7 @@ public class CarMovement : MonoBehaviour
         else
         {
             Debug.Log($"Agent is on NavMesh: {agent.isOnNavMesh}");
+            agent.autoBraking = false; // Prevent the car from stopping at each waypoint
         }
     }
 
@@ -27,10 +28,20 @@ public class CarMovement : MonoBehaviour
         if (!waypointsAssigned || waypoints.Length == 0)
             return;
 
-        // Check if the NavMeshAgent is on a valid NavMesh and move to next waypoint
-        if (agent.isOnNavMesh && !agent.pathPending && agent.remainingDistance < 0.5f)
+        if (waypointsAssigned && agent != null && agent.isOnNavMesh)
         {
-            MoveToNextWaypoint();
+            // Check if the car is near the current waypoint
+            if (agent.remainingDistance < 1.0f && !agent.pathPending) // Adjust threshold (e.g., 1.0f) for smoothness
+            {
+                MoveToNextWaypoint();
+            }
+        }
+
+        if (agent != null && agent.velocity.magnitude > 0.1f)
+        {
+            // Smoothly rotate the car towards its velocity direction
+            Quaternion targetRotation = Quaternion.LookRotation(agent.velocity.normalized);
+            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 5.0f); // Adjust 5.0f for rotation speed
         }
     }
 
@@ -66,7 +77,17 @@ public class CarMovement : MonoBehaviour
         if (waypoints.Length == 0 || !agent.isOnNavMesh)
             return;
 
+        // Set the next waypoint as the destination
+        currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
         agent.destination = waypoints[currentWaypointIndex].position;
+
+        // Add a random offset to the waypoint position
+        Vector3 waypointPosition = waypoints[currentWaypointIndex].position;
+        float randomOffset = Random.Range(-2.0f, 2.0f); // Adjust the range for wider checkpoints
+        Vector3 offsetPosition = waypointPosition + new Vector3(randomOffset, 0, randomOffset);
+
+        agent.destination = offsetPosition;
+
         currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length;
     }
 

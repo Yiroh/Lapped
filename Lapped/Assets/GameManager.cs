@@ -1,50 +1,37 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("Currency Settings")]
     public int currency = 0; // Player's total currency
     public float currencyPerSecond = 1f; // Base earnings per second
     public TextMeshProUGUI currencyText; // Reference to the TextMeshPro UI element
 
-    public GameObject carPrefab;  // Car prefab
+    [Header("Car Purchase Settings")]
+    public TextMeshProUGUI buyCarButtonText; // Button text for "Buy Car"
+    public Button buyCarButton; // Button to buy a car
+    public int carCost = 10; // Cost to purchase a new car
+    public GameObject carPrefab; // Car prefab
+
+    [Header("Upgrade Settings")]
+    public TextMeshProUGUI upgradeCurrencyButtonText; // Button text for "Upgrade Currency"
+    public Button upgradeCurrencyButton; // Button to upgrade currency per second
+    public int upgradeCost = 20; // Cost to upgrade currency per second
+    public float upgradeIncrement = 1f; // Increment for currency per second
+
+    [Header("Waypoint Settings")]
     public Transform[] waypoints; // Waypoints for the cars to follow
-    public int carCount = 1;      // Number of cars to spawn
+
+    [Header("Game State")]
+    public int carCount = 1; // Current number of cars
 
     void Start()
     {
-        SpawnCars();
+        SpawnCars(carCount); // Spawn initial cars
         InvokeRepeating("GenerateCurrency", 1f, 1f); // Start currency generation
         UpdateCurrencyUI();
-    }
-
-    void SpawnCars()
-    {
-        for (int i = 0; i < carCount; i++)
-        {
-            // Spawn the car at the position of a waypoint
-            Vector3 spawnPosition = waypoints[i % waypoints.Length].position;
-            GameObject car = Instantiate(carPrefab, spawnPosition, Quaternion.identity);
-
-            CarMovement carMovement = car.GetComponentInChildren<CarMovement>();
-            if (carMovement != null)
-            {
-                Debug.Log("CarMovement script found on child of car prefab.");
-                carMovement.AssignWaypoints(waypoints);
-                carMovement.SetStartWaypointIndex(i % waypoints.Length); // Assign a unique start index
-
-                // Randomize speed
-                UnityEngine.AI.NavMeshAgent agent = car.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>();
-                if (agent != null)
-                {
-                    agent.speed = Random.Range(3.0f, 5.0f); // Adjust range for more noticeable differences
-                }
-            }
-            else
-            {
-                Debug.LogError("CarMovement script is missing in the child GameObjects of the car prefab!");
-            }
-        }
     }
 
     void GenerateCurrency()
@@ -53,8 +40,60 @@ public class GameManager : MonoBehaviour
         UpdateCurrencyUI();
     }
 
-    void UpdateCurrencyUI()
+    public void UpdateCurrencyUI()
     {
-        currencyText.text = "Currency: " + currency.ToString();
+        currencyText.text = $"Currency: {currency}";
+        buyCarButtonText.text = $"Buy Car: {carCost}";
+        upgradeCurrencyButtonText.text = $"Upgrade Currency: {upgradeCost}";
+
+        buyCarButton.interactable = currency >= carCost;
+        upgradeCurrencyButton.interactable = currency >= upgradeCost;
+    }
+
+    public void BuyCar()
+    {
+        if (currency >= carCost)
+        {
+            currency -= carCost; // Deduct cost
+            carCost += 5; // Increment the cost of the next car (optional scaling)
+            SpawnCars(1); // Spawn one additional car
+            UpdateCurrencyUI();
+        }
+        else
+        {
+            Debug.Log("Not enough currency to buy a car!");
+        }
+    }
+
+    public void UpgradeCurrency()
+    {
+        if (currency >= upgradeCost)
+        {
+            currency -= upgradeCost; // Deduct cost
+            currencyPerSecond += upgradeIncrement; // Increase currency per second
+            upgradeCost += 10; // Increment the cost of the next upgrade (optional scaling)
+            UpdateCurrencyUI();
+        }
+        else
+        {
+            Debug.Log("Not enough currency to upgrade!");
+        }
+    }
+
+    void SpawnCars(int count)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            // Spawn the car at a waypoint or a default position
+            Vector3 spawnPosition = waypoints[0].position; // Adjust as needed
+            GameObject car = Instantiate(carPrefab, spawnPosition, Quaternion.identity);
+
+            // Assign waypoints to the car
+            CarMovement carMovement = car.GetComponentInChildren<CarMovement>();
+            if (carMovement != null)
+            {
+                carMovement.AssignWaypoints(waypoints);
+            }
+        }
     }
 }
